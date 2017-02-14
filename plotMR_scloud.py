@@ -1,6 +1,5 @@
 import matplotlib.pyplot as plt
 import numpy as np
-from astropy.convolution import convolve, Box1DKernel
 
 data=np.genfromtxt('scloud0.txt', names=['P_z', 'T_z', 'Q_c', 'Q_v', 'Qt', 'Qs'])
 P = data['P_z']

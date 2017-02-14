@@ -28,7 +28,6 @@
       real*8 :: tau ! output
       integer :: l ! only a location
       l = minloc(abs(Pin-Pz),1)
-!      temp = Tmes(l)
       if ( abs(Pin(l+1)-Pz) <= abs(Pin(l-1)-Pz) ) then
         tau = (Tin(l+1)-Tin(l))/(Pin(l+1)-Pin(l))
       elseif ( abs(Pin(l+1)-Pz) > abs(Pin(l-1)-Pz) ) then
@@ -39,12 +38,13 @@
 !    Find eddy diffusion coefficient at given alt                      !
 !    This is Equation 5 from Ackerman & Marley 2001                    !
 !----------------------------------------------------------------------!
-      function EDDY(H, L, ro) 	  result(K)
-      real*8, intent(in) :: H, L, ro
+      function EDDY(H, len, ro) 	  result(K)
+      real*8, intent(in) :: H, len, ro
       real*8, parameter :: F = (stefco*1.D-3)*(Tf)**4.        ! Flux [J/m2 s]
-      real*8, parameter :: rg = Rgas*1.D-7
+      real*8, parameter :: g_r = Rgas*1.D-7
       real :: K
-      K = H*1.D5/3.*((L/H)**(4./3.))*(1.D3*rg*F/(mu*ro*cp))**(1./3.)
+      K = H*1.D5/3.*((len/H)**(4./3.))*(1.D3*g_r*F/(mu*ro*cp))**(1./3.)
+!      write (20,*) Pz(i+1),len
       end function EDDY
 !----------------------------------------------------------------------!
 !       A function to calculate the saturation vapour mixing ratio for !
@@ -56,13 +56,33 @@
         qs = (exp(10.53 - 2161./T - 86596./T**2.))/P
       end function SatVap
 !----------------------------------------------------------------------!
-!	find r_w [m]
+!       find sedimentation velocities                                  !
 !----------------------------------------------------------------------!
-      function AR_W(b, c) result(rw)
-         real*8, intent(in) :: b, c
-         real*8 :: rw
-      	rw = (1./2.)*(sqrt(b**2-4*c)-b)
-      end function AR_W
+      subroutine VSED(w, T, P, r, vs)
+        real*8, intent(in) :: w  ! input mixing velocity
+        real*8, dimension(1 : n), intent(out) :: vs, r ! output sedimentation velocity
+        real*8 :: x,y,T,P,dr,dl
+        dl = 1.d-6*Rgas*T/(sqrt(2.d0)*pi*d**2*Navog*P) ! molec. MFP in [cm]
+        dr = rho_amm-rho_a ! density contrast btwn condensate & atm [g/cm^3]
+        rw = (-1.26*dl+sqrt((1.26*dl)**2+4*w*eta*9./(2.*g*dr)))/2.
+        do j=1,n
+          r(j) = rw/sig + rw*(1.-1./sig)*(j-1.)/(n-1.)
+          x = log(32.d2*rho_a*g*dr*r(j)**3/(3.*eta**2))
+          y = .8*x-.01*x**2
+            if ( dexp(y) <= 1000 ) then
+            vs(j) = dexp(y)*eta/(2.*r(j)*rho_a)
+            else
+            vs(j) = (1+1.26*dl/r(j))*sqrt(8.d2*g*r(j)*dr/(1.35*rho_a))
+            endif
+        enddo
+      end subroutine VSED
+!----------------------------------------------------------------------!
+      function ALPH(x, y) result(a)
+         real*8, dimension(1 : n), intent(in) :: x, y
+         real*8 :: a
+      	a = size(x)*sum(log(x)*log(y))-sum(log(x))*sum(log(y))
+        a = a/(size(x)*sum((log(x))**2)-(sum(log(x)))**2)
+      end function ALPH
 !----------------------------------------------------------------------!
       end module interp
 
@@ -85,6 +105,7 @@
       Qv(1) = qbelow
       Qc(1) = 0.d0
       Qt(1) = Qv(1) + Qc(1)
+      dt(1) = 0.d0
 !     NOW CALCULATE THE LOT
       open (unit=20,file="output.txt",action="write",status="replace")
       do i=1, layers-1
@@ -125,17 +146,24 @@
         Qc(i+1) = Qt(i+1)-Qv(i+1)
 !        write (20,*) Pz(i+1),Tz(i+1),Qc(i+1),Qv(i+1),Qt(i+1),Qs(i+1)
 !       NOW THE SECOND PART
+        if ( Qc(i+1) > 0.d0 ) then
         eta = ((kb*Tz(i+1)/eps)**0.16)/(pi*(d**2)*1.22)
-        eta = sqrt(pi*em*kb*Tz(i+1)/1.d3)*eta
-        eta = ((1.D2**2)*5./16.)*eta
-!       MEAN FREE PATH
-        MFP = (Rgas*1.D-7)*Tz(i+1)/(sqrt(2.)*pi*(d**2.)*Navog*Pz(i+1))
-        MFP = 0.1*MFP
-        rw = AR_W(1.26*MFP, -9.*w*eta/(2.*g*((rho_amm-rho_a)*1.d3)))
-        Nre = 2.*rw*rho_a*w/eta
-        write (20,*) Nre
+        eta = (5./16.)*sqrt(pi*em*kb*Tz(i+1)/Navog)*eta
+        call VSED(w,Tz(i+1),Pz(i+1),r,vf)
+        alf = ALPH(r/rw,vf/(w*1.d2))
+!       FIND GEOMETRIC MEAN RADIUS
+        r_g = rw*frain**(1/alf)*exp(-(alf+6)*(log(sig))**2/2.)
+!       FIND TOTAL NUMBER CONCENTRATION OF PARTICLES
+        EN = (3.*(mu_a/mu)*rho_a*Qc(i+1)/(4.*pi*rho_amm*r_g**3))
+        EN = EN*exp(-9.*(log(sig))**2/2.)
+!       FIND EFFECTIVE RADIUS
+        r_eff = rw*frain**(1/alf)*exp(-(alf+1)*(log(sig))**2/2.)
+!       ESTIMATE OPACITY FOR GEOMETRIC SCATTERER
+        dt(i+1) = 3.*(mu_a/mu)*rho_a*Qc(i+1)*Dz/(2.*rho_amm*r_eff)
+        write (20,*) Pz(i+1), r_g*1.d4
+        endif
       enddo
 !
       close (20)
-!      print*, 1.d1,1d1
+!      print*, 1.d2*8.,8.d2
       end program fluffy
