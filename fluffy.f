@@ -113,16 +113,17 @@
 !       ESTIMATING PRESSURE & DENSITY USING HYDROSTATIC EQUILIBRIUM
         Pz(i+1) = exp(-z(i+1)/Hs)
         rho_a = rho_0*exp(-z(i+1)/HS)
-!       GETTING TEMPERATURE FROM MEASURED PROFILE ar_wBY INTERPOLATION
+!       GETTING TEMPERATURE FROM MEASURED PROFILE BY INTERPOLATION
         Tz(i+1) = TatZ(Pz(i+1),P,T)
-!       FIND LOCAL SCALE HEIGHT ... or don't
-!        Hs = (Rgas*1.D-7)*Tz(i+1)/(mu*g)
+!       FIND LOCAL SCALE HEIGHT ... makes the match to A&M better
+        Hs = (Rgas*1.D-7)*Tz(i+1)/(mu*g)
 !       CALCULATE LOCAL TEMPERATURE LAPSE RATE dT/dz
 !       USING
 !       dT/dz = [dT/dP]*[dP/dz] = [dT/dP]*[-rho_a * g]
-        Tau = GRADI(Pz(i+1),P,T)*(-rho_a*g)*1.d1
+!        Tau = GRADI(Pz(i+1),P,T)*(-rho_a*g)*1.d1
+        Tau = 60.85*(-rho_a*g)*1.d1
 !       CALCULATE LOCAL MIXING LENGTH
-        L = Hs*max(A,abs(Tau/Tau_a))
+        L = Hs*max(A,Tau/Tau_a)
 !       CALCULATE EDDY DIFFUSION COEFFICIENT
         K = EDDY(Hs,L,rho_a)
          if ( K < Kmin ) then
@@ -160,7 +161,7 @@
         r_eff = rw*frain**(1/alf)*exp(-(alf+1)*(log(sig))**2/2.)
 !       ESTIMATE OPACITY FOR GEOMETRIC SCATTERER
         dt(i+1) = 3.*(mu_a/mu)*rho_a*Qc(i+1)*Dz/(2.*rho_amm*r_eff)
-        write (20,*) Pz(i+1), r_g*1.d4
+        write (20,*) Pz(i+1), Qc(i+1)!r_g*1.d4
         endif
       enddo
 !
