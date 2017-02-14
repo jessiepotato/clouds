@@ -96,11 +96,10 @@
       open (unit=20,file='temp.txt',action="read",status="old")
       read(20, *) T;
       close(UNIT=20)
-
 !     SET SOME INITIAL VALUES
       z(1) = 0.
-      Tz(1) = 165.
-      Pz(1) = 1.
+      Tz(1) = maxval(T)
+      Pz(1) = maxval(P)
       Hs = (Rgas*1.D-7)*Tf/(mu*g)!*Tz(1)/(mu*g)
       Qv(1) = qbelow
       Qc(1) = 0.d0
@@ -111,7 +110,7 @@
       do i=1, layers-1
         z(i+1) = i*Dz
 !       ESTIMATING PRESSURE & DENSITY USING HYDROSTATIC EQUILIBRIUM
-        Pz(i+1) = exp(-z(i+1)/Hs)
+        Pz(i+1) = maxval(P)*exp(-z(i+1)/Hs)
         rho_a = rho_0*exp(-z(i+1)/HS)
 !       GETTING TEMPERATURE FROM MEASURED PROFILE ar_wBY INTERPOLATION
         Tz(i+1) = TatZ(Pz(i+1),P,T)
@@ -160,10 +159,11 @@
         r_eff = rw*frain**(1/alf)*exp(-(alf+1)*(log(sig))**2/2.)
 !       ESTIMATE OPACITY FOR GEOMETRIC SCATTERER
         dt(i+1) = 3.*(mu_a/mu)*rho_a*Qc(i+1)*Dz/(2.*rho_amm*r_eff)
-        write (20,*) Pz(i+1), r_g*1.d4
         endif
+      write (20,*) Pz(i+1), Tz(i+1)
       enddo
 !
+!      write (20,*) 'HELLO WORLD'
       close (20)
 !      print*, 1.d2*8.,8.d2
       end program fluffy

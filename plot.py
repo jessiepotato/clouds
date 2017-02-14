@@ -28,15 +28,14 @@ ax.invert_yaxis()
 
 fontsize=25
 #ax.semilogy(np.log10(qs),P,'c-', lw=3, label='Scloud = 0; Saturation')
-ax.semilogy(x,P,'k.-', lw=3, label='')
+ax.semilogy(x,P,'ko-', lw=3, label='')
 
 
 #ax.legend()
 #ax.set_xlim([-8, -4])
 #ax.set_ylim([1, .1])
-ax.set_xlabel('Geometric mean radius [micron]', fontsize=fontsize)
-#ax.set_xlabel('alpha', fontsize=fontsize)
-ax.set_ylabel('Pressure [bar]', fontsize=fontsize)
+#ax.set_xlabel('log10(Volume mixing ratio)', fontsize=fontsize)
+#ax.set_ylabel('Pressure [bar]', fontsize=fontsize)
 
 #ax2 = ax.twiny()
 
