@@ -120,8 +120,8 @@
 !       CALCULATE LOCAL TEMPERATURE LAPSE RATE dT/dz
 !       USING
 !       dT/dz = [dT/dP]*[dP/dz] = [dT/dP]*[-rho_a * g]
-!        Tau = GRADI(Pz(i+1),P,T)*(-rho_a*g)*1.d1
-        Tau = 60.85*(-rho_a*g)*1.d1
+        Tau = GRADI(Pz(i+1),P,T)*(-rho_a*g)*1.d1
+!        Tau = 60.85*(-rho_a*g)*1.d1
 !       CALCULATE LOCAL MIXING LENGTH
         L = Hs*max(A,Tau/Tau_a)
 !       CALCULATE EDDY DIFFUSION COEFFICIENT
